@@ -1,0 +1,22 @@
+[
+  {
+    "_comment": "TODO Phase 0: Replace with actual ABI from BaseScan after reverse engineering",
+    "_note": "These are placeholder signatures — fill in after Tenderly/BaseScan analysis",
+    "type": "function",
+    "name": "buy",
+    "inputs": [
+      { "name": "packCount", "type": "uint256" }
+    ],
+    "outputs": [],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "event",
+    "name": "PackBought",
+    "inputs": [
+      { "name": "buyer", "type": "address", "indexed": true },
+      { "name": "packCount", "type": "uint256", "indexed": false },
+      { "name": "packIds", "type": "uint256[]", "indexed": false }
+    ]
+  }
+]

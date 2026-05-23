@@ -1,0 +1,40 @@
+[
+  {
+    "_comment": "TODO Phase 0: Replace with actual ABI from BaseScan",
+    "type": "function",
+    "name": "open",
+    "inputs": [
+      { "name": "packIds", "type": "uint256[]" }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "balanceOf",
+    "inputs": [
+      { "name": "owner", "type": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "tokensOfOwner",
+    "inputs": [
+      { "name": "owner", "type": "address" }
+    ],
+    "outputs": [{ "name": "", "type": "uint256[]" }],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "PackOpened",
+    "inputs": [
+      { "name": "opener", "type": "address", "indexed": true },
+      { "name": "packId", "type": "uint256", "indexed": false },
+      { "name": "tokens", "type": "address[]", "indexed": false },
+      { "name": "amounts", "type": "uint256[]", "indexed": false }
+    ]
+  }
+]

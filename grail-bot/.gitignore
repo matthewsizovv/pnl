@@ -1,0 +1,10 @@
+node_modules/
+dist/
+.env
+wallets.csv
+data/state.db
+data/state.db-shm
+data/state.db-wal
+data/logs/
+*.log
+config.json
