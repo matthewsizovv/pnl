@@ -8,17 +8,18 @@
   },
   "scripts": {
     "build": "tsc --noEmit && tsc --outDir dist",
-    "init": "node dist/cli.js init",
-    "start": "node dist/cli.js start",
-    "resume": "node dist/cli.js resume",
-    "status": "node dist/cli.js status",
-    "export": "node dist/cli.js export",
-    "dev": "tsx src/cli.ts",
+    "init": "tsx src/cli.ts init",
+    "start": "tsx src/cli.ts start",
+    "resume": "tsx src/cli.ts resume",
+    "status": "tsx src/cli.ts status",
+    "export": "tsx src/cli.ts export",
     "dev:dry": "tsx src/cli.ts start --dry-run",
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "tsc --noEmit",
-    "audit": "npm audit"
+    "audit": "npm audit",
+    "phase0:decode": "tsx tools/decode-tx.ts",
+    "check:env": "tsx tools/check-env.ts"
   },
   "dependencies": {
     "better-sqlite3": "^9.4.3",
