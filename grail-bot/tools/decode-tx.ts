@@ -42,21 +42,39 @@ const RPC_URLS = [
   'https://base.llamarpc.com',
 ].filter(Boolean) as string[];
 
+// ── Известные адреса Grail.xyz на Base (Phase 0 данные) ────────────────────
+const GRAIL_ADDRESSES = {
+  PACK_SALE: '0x4491ac59d1e6a5d2e15a8048c2de34199e8de8da',
+  PACK_NFT:  '0xc7bd7aa20841e43838648131768735f32d15aafa',
+  USDC:      '0x833589fcd6edb6e08f4c7c32d4f71b54bda02913',
+} as const;
+
 // ── Известные ABI для попытки декодирования ────────────────────────────────
 // Добавляй сюда сигнатуры по мере их нахождения в Phase 0
 const KNOWN_FUNCTIONS = [
-  // Покупка паков — пробуем несколько вариантов
+  // Покупка паков — все возможные варианты с подписью бэкенда
+  // Вариант A: buy(quantity, signature, deadline) — PRIMARY
+  'function buy(uint256 quantity, bytes signature, uint256 deadline)',
+  // Вариант B: buy(quantity, deadline, signature)
+  'function buy(uint256 quantity, uint256 deadline, bytes signature)',
+  // Без подписи
   'function buy(uint256 packCount)',
-  'function buy(uint256 packCount, bytes signature, uint256 deadline)',
+  // С collectionId
   'function buy(uint256 collectionId, uint256 packCount)',
+  'function buy(uint256 collectionId, uint256 quantity, bytes signature, uint256 deadline)',
+  // Альтернативные имена
+  'function purchasePacks(uint256 count, bytes signature, uint256 deadline)',
   'function purchasePacks(uint256 count)',
   'function mintPacks(uint256 amount)',
   'function buyPacks(uint256 count)',
+  // С nonce
+  'function mint(uint256 quantity, uint256 nonce, uint256 expiry, bytes signature)',
   // Открытие паков
   'function open(uint256[] packIds)',
   'function openPacks(uint256[] tokenIds)',
   'function reveal(uint256[] tokenIds)',
   'function unpack(uint256[] tokenIds)',
+  'function openPack(uint256 packId)',
   // Клейм
   'function claim()',
   'function claimRewards()',
@@ -206,7 +224,27 @@ async function main() {
   console.log('РЕЗУЛЬТАТ ДЛЯ RE_REPORT.md');
   console.log('═══════════════════════════════════════════════════════════════');
 
+  // ── Подсказки по адресам ─────────────────────────────────────────────────
+  console.log('\n═══════════════════════════════════════════════════════════════');
+  console.log('ИДЕНТИФИКАЦИЯ КОНТРАКТА');
+  console.log('═══════════════════════════════════════════════════════════════');
+
+  const toAddr = tx.to?.toLowerCase();
+  if (toAddr === GRAIL_ADDRESSES.PACK_SALE) {
+    console.log(`✅ To = PACK_SALE (0x4491...)  — это транзакция покупки пака`);
+  } else if (toAddr === GRAIL_ADDRESSES.PACK_NFT) {
+    console.log(`✅ To = PACK_NFT (0xc7bd...)   — это транзакция открытия пака`);
+  } else if (toAddr === GRAIL_ADDRESSES.USDC) {
+    console.log(`✅ To = USDC (0x8335...)        — это USDC approve или transfer`);
+  } else {
+    console.log(`⚠️  Неизвестный контракт: ${tx.to}`);
+    console.log(`   Ожидаемые контракты:`);
+    console.log(`   PACK_SALE: ${GRAIL_ADDRESSES.PACK_SALE}`);
+    console.log(`   PACK_NFT:  ${GRAIL_ADDRESSES.PACK_NFT}`);
+  }
+
   const report = generateReport(tx, receipt, selector, calldata, decoded);
+  console.log('\n');
   console.log(report);
 
   // Сохраняем в файл
@@ -216,44 +254,58 @@ async function main() {
 }
 
 function generateReport(tx: Awaited<ReturnType<typeof JsonRpcProvider.prototype.getTransaction>>, receipt: Awaited<ReturnType<typeof JsonRpcProvider.prototype.getTransactionReceipt>>, selector: string, calldata: string, decoded: boolean): string {
+  const paymentIsEth = tx && tx.value > 0n;
   const lines: string[] = [
     '# Phase 0 — Автоматически извлечённый отчёт',
     '',
     '> Сгенерировано: ' + new Date().toISOString(),
-    '> Скопируй в RE_REPORT.md и заполни оставшиеся поля вручную.',
+    '> TX hash: ' + (tx?.hash ?? 'n/a'),
     '',
     '## Транзакция',
     '',
-    `\`\`\`yaml`,
+    '```yaml',
     `tx_hash: "${tx?.hash}"`,
     `from: "${tx?.from}"`,
-    `to: "${tx?.to}"    # ← Это вероятно PACK_SALE контракт`,
+    `to: "${tx?.to}"`,
     `value: "${tx ? formatEther(tx.value) : '0'} ETH"`,
+    `payment: "${paymentIsEth ? 'ETH (msg.value > 0)' : 'USDC или другой ERC20 (value = 0)'}"`,
     `selector: "${selector}"`,
     `status: "${receipt?.status === 1 ? 'success' : 'failed'}"`,
     `gas_used: ${receipt?.gasUsed?.toString() ?? 'unknown'}`,
     '```',
     '',
-    '## Переменные окружения для заполнения',
+    '## Phase 0 конфиг (обновить после анализа)',
     '',
     '```bash',
-    `export GRAIL_PACK_SALE="${tx?.to ?? '0x???'}"`,
-    `export GRAIL_PACK_NFT="0x???"    # Найти из события PackOpened`,
-    `export GRAIL_PAYMENT_TOKEN="ETH"  # или USDC — проверь значение value выше`,
+    `# Контракты (уже вшиты в код как default)`,
+    `export GRAIL_PACK_SALE="${tx?.to ?? '0x4491ac59d1e6a5d2e15a8048c2de34199e8de8da'}"`,
+    `export GRAIL_PACK_NFT="0xc7bd7aa20841e43838648131768735f32d15aafa"`,
+    `export GRAIL_PAYMENT_TOKEN="${paymentIsEth ? 'ETH' : 'USDC'}"`,
+    `export GRAIL_PACK_PRICE_RAW="15000000"  # 15 USDC`,
+    `export GRAIL_BACKEND_SIG="true"          # подпись нужна`,
+    `export GRAIL_CLAIM_NEEDED="false"        # клейм не нужен`,
+    '',
+    `# После декодирования функции (selector: ${selector}):`,
+    `# export GRAIL_BUY_FUNCTION=buy`,
+    `# export GRAIL_BUY_VARIANT=A    # A|B|C — зависит от порядка параметров`,
     '```',
     '',
     '## Следующие шаги',
     '',
-    '1. Определить тип пак NFT:',
-    `   cast call ${tx?.to ?? '<PACK_SALE>'} "supportsInterface(bytes4)(bool)" 0xd9b67a26 --rpc-url https://mainnet.base.org`,
-    `   # Если true → ERC1155 (GRAIL_NFT_ERC1155=true)`,
-    `   # Если false → ERC721 (по умолчанию)`,
-    '',
-    '2. Найти имя view-функции цены:',
+    '1. Определить точную сигнатуру buy():',
     `   cast 4byte ${selector}`,
     '',
-    '3. Задать все ENV переменные и запустить:',
-    '   npm start -- --dry-run',
+    '2. Декодировать параметры:',
+    `   cast abi-decode "buy(uint256,bytes,uint256)" ${tx?.data.slice(0, 10)}...`,
+    '',
+    '3. Определить тип пак NFT (ERC721 vs ERC1155):',
+    '   cast call 0xc7bd7aa20841e43838648131768735f32d15aafa \\',
+    '     "supportsInterface(bytes4)(bool)" 0x80ac58cd \\',
+    '     --rpc-url https://mainnet.base.org',
+    '',
+    '4. Задать API URL и запустить dry-run:',
+    '   export GRAIL_API_STUB=true  # для сухого тестирования без реального API',
+    '   npm start -- --dry-run --only-index 0',
   ];
 
   return lines.join('\n');
